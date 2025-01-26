@@ -22,3 +22,6 @@ config USB_DEVICE_STACK
     default y
 
 endif # USB
+
+config SPI
+    default y
