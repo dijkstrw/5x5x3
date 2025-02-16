@@ -1,0 +1,13 @@
+menu "Light Group Options"
+
+config LIGHT_GROUP_INTERVAL_MS
+       int "Minimum wait between light group updates"
+       default 1
+
+endmenu
+
+DT_COMPAT_ZMK_BEHAVIOR_LIGHT_GROUP := zmk,behavior-light-group
+
+config ZMK_BEHAVIOR_LIGHT_GROUP
+       bool
+       default $(dt_compat_enabled,$(DT_COMPAT_ZMK_BEHAVIOR_LIGHT_GROUP))

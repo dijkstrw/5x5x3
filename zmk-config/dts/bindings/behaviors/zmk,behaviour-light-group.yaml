@@ -1,0 +1,36 @@
+description: RGB light groups indicators
+
+compatible: "zmk,behavior-light-group"
+
+properties:
+  bindings:
+    type: uint8-array
+    required: true
+    description: Define the layout of the rgb leds
+
+child-binding:
+  description: Light-group layer to be used in a rgbmap
+
+  properties:
+    bindings:
+      type: uint8-array
+      required: true
+      description: Light group assignments per led
+    sequence:
+      child-binding:
+        background:
+          type: uint8-array
+        desktop:
+          type: uint8-array
+        volume:
+          type: uint8-array
+        hid:
+          type: uint8-array
+        battery:
+          type: uint8-array
+        layer:
+          type: uint8-array
+        endpoint:
+          type: uint8-array
+        profile:
+          type: uint8-array

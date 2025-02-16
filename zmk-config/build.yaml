@@ -1,2 +1,3 @@
 include:
   - board: 5x5x3
+    shield: light_group
