@@ -9,7 +9,7 @@
  *    * Redistributions in binary form must reproduce the above copyright
  *      notice, this list of conditions and the following disclaimer in the
  *      documentation and/or other materials provided with the distribution.
- *    * Neither the name of the auhor nor the names of its contributors
+ *    * Neither the name of the author nor the names of its contributors
  *      may be used to endorse or promote products derived from this software
  *      without specific prior written permission.
  *
@@ -25,7 +25,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define HSV(Hue, Saturation, Value) (Hue >> 8) (Hue & 0xff) Saturation Value
+#define HUE_SEXTANT                 0x100
+#define SEXTANT_MAX                 6
+#define HUE_MAX                     ((SEXTANT_MAX * HUE_SEXTANT) - 1)
+
+#define HSV(Hue, Saturation, Value) (((Hue * (HUE_SEXTANT / 60)) << 16) | (Saturation << 8) | Value)
 
 /*
  * Basic hues, 15° increments

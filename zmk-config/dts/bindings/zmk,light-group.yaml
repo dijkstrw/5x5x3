@@ -1,0 +1,37 @@
+description: |
+  Allows defining light group actions composed of multiple layers
+
+compatible: "zmk,light-group"
+
+child-binding:
+  description: Light-group layer to be used in a rgbmap
+
+  properties:
+    bindings:
+      type: uint8-array
+      required: true
+      description: Light group assignments per led
+    backgrounds:
+      type: phandle-array
+      required: false
+    desktops:
+      type: phandle-array
+      required: false
+    volumes:
+      type: phandle-array
+      required: false
+    hids:
+      type: phandle-array
+      required: false
+    batterys:
+      type: phandle-array
+      required: false
+    layers:
+      type: phandle-array
+      required: false
+    endpoints:
+      type: phandle-array
+      required: false
+    profiles:
+      type: phandle-array
+      required: false

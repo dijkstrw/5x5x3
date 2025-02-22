@@ -1,7 +1,7 @@
-#define LG_BATTERY    0
-#define LG_DESKTOP    1
-#define LG_ENDPOINT   2
-#define LG_HID        3
-#define LG_LAYER      4
-#define LG_PROFILE    5
-#define LG_VOLUME     6
+#define LG_BATTERY    00
+#define LG_DESKTOP    01
+#define LG_ENDPOINT   02
+#define LG_HID        03
+#define LG_LAYER      04
+#define LG_PROFILE    05
+#define LG_VOLUME     06

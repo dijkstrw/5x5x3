@@ -1,6 +1,6 @@
 name: zmk-feature-lightgroup
 build:
-  cmake: .
+#  cmake: .
   kconfig: Kconfig
   settings:
     board_root: .

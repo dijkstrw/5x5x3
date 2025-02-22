@@ -11,4 +11,4 @@ To start run:
 
 Inside a zmk/app directory, run
 
- west build --pristine -b 5x5x3 -- -DZMK_CONFIG=../../zmk-config
+ west build --pristine -b 5x5x3 -- -DZMK_EXTRA_MODULES=`pwd`/../../zmk-config

@@ -1,0 +1,14 @@
+#include <dt-bindings/zmk/behaviors.h>
+
+/ {
+    behaviors {
+#if ZMK_BEHAVIOR_OMIT(HSV)
+    /omit-if-no-ref/
+#endif
+        hsv: color {
+            compatible = "zmk,behavior-hsv";
+            #binding-cells = <1>;
+            display-name = "(Hue, Saturation, Value)";
+        };
+    };
+};

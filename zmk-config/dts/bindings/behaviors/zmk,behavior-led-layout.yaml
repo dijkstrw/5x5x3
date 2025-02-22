@@ -1,0 +1,9 @@
+description: Light layout definition
+
+compatible: "zmk,behavior-led-layout"
+
+properties:
+  bindings:
+    type: uint8-array
+    required: true
+    description: Define the layout of the rgb leds

@@ -1,0 +1,5 @@
+description: HSV color definition
+
+compatible: "zmk,behavior-hsv"
+
+include: one_param.yaml
