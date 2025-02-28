@@ -1,0 +1,15 @@
+description: |
+  Allows defining light group actions composed of multiple layers
+
+compatible: "zmk,color-group"
+
+child-binding:
+  description: Colors to be used in led signalling
+
+child-binding:
+  properties:
+    colors:
+      type: phandle-array
+      required: true
+      description: Colors (in HSV format) to be used to signal events
+

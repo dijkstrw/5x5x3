@@ -5,9 +5,9 @@
 #if ZMK_BEHAVIOR_OMIT(HSV)
     /omit-if-no-ref/
 #endif
-        hsv: color {
+        hsv: hsv {
             compatible = "zmk,behavior-hsv";
-            #binding-cells = <1>;
+            #color-cells = <1>;
             display-name = "(Hue, Saturation, Value)";
         };
     };

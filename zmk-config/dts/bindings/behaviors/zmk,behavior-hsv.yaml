@@ -1,5 +1,14 @@
 description: HSV color definition
 
+include: behavior-metadata.yaml
+
 compatible: "zmk,behavior-hsv"
 
-include: one_param.yaml
+properties:
+  "#color-cells":
+    type: int
+    required: true
+    const: 1
+
+color-cells:
+  - hsv
