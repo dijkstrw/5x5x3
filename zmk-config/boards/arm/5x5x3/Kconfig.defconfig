@@ -1,5 +1,5 @@
 config ZMK_KEYBOARD_NAME
-        default "5x5x3"
+    default "5x5x3"
 
 config ZMK_USB
         default y
@@ -12,6 +12,20 @@ config BT_CTLR
 
 config PINCTRL
     default y
+
+config ZMK_LIGHT_GROUP
+    bool "Enable light group mode"
+    default y
+
+if ZMK_LIGHT_GROUP
+
+config WS2812_STRIP
+    default y
+
+config LED_STRIP
+    default y
+
+endif # ZMK_LIGHT_GROUP
 
 if USB
 

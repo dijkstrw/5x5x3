@@ -1,4 +1,3 @@
-board_runner_args(nrfjprog "--nrf-family=NRF52" "--softreset")
+board_runner_args(blackmagicprobe "--gdb-serial" "blackmagic.lan:2022")
 include_directories(include)
-include(${ZEPHYR_BASE}/boards/common/uf2.board.cmake)
-include(${ZEPHYR_BASE}/boards/common/nrfjprog.board.cmake)
+include(${ZEPHYR_BASE}/boards/common/blackmagicprobe.board.cmake)

@@ -160,7 +160,7 @@
         zephyr,shell-uart = &cdc_acm_uart;
         zmk,battery = &vbatt;
         zmk,kscan = &kscan0;
-        zmk,underglow = &led_strip;
+        zmk,light-group = &led_strip;
     };
 
     EXT_POWER {
