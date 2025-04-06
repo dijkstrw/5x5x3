@@ -66,7 +66,8 @@ static uint8_t ease8_inoutquad(uint8_t x)
     }
     return xx2;
 }
-static void hsv_transition(hsv_t source, hsv_t target, fract8_t fraction, hsv_t *result)
+
+void hsv_transition(hsv_t source, hsv_t target, fract8_t fraction, hsv_t *result)
 {
     int8_t sign;
     int16_t d;
@@ -214,9 +215,50 @@ void pixel_effect_off(struct pixel_state *ps, int position)
     ps->target.v = 0;
 }
 
+void pixel_effect_init_hold(struct pixel_state *ps, hsv_t *target)
+{
+    ps->effect = EFFECT_HOLD;
+    ps->source = ps->current;
+    ps->target = *target;
+    ps->round = ROUND_RAMPUP;
+    ps->step = 0;
+}
+
 void pixel_effect_hold(struct pixel_state *ps, int position)
 {
-    /* hold = do nothing */
+    /* There are two phases to a hold;
+     * - ramp up towards color target from source
+     * - dwell on color target
+     */
+    uint8_t scale;
+
+    if (ps->round == ROUND_OFF) {
+        return;
+    }
+
+    scale = ease8_inoutquad(ps->step);
+    switch (ps->round) {
+    case ROUND_RAMPUP:
+        hsv_transition(ps->source, ps->target, scale, &ps->current);
+        break;
+
+    case ROUND_DWELL:
+        ps->current = ps->target;
+        break;
+    }
+    increase_round_step(ps);
+    if (ps->round >= ROUND_OFF) {
+        ps->round = ROUND_OFF;
+    }
+}
+
+void pixel_effect_init_flash(struct pixel_state *ps, hsv_t *target)
+{
+    ps->effect = EFFECT_FLASH;
+    ps->source = ps->current;
+    ps->target = *target;
+    ps->round = ROUND_RAMPUP;
+    ps->step = 0;
 }
 
 void pixel_effect_flash(struct pixel_state *ps, int position)
@@ -227,13 +269,6 @@ void pixel_effect_flash(struct pixel_state *ps, int position)
      * - ramp down towards original source from flash target
      */
     uint8_t scale;
-
-    enum steps {
-        ROUND_RAMPUP = 0,
-        ROUND_DWELL,
-        ROUND_RAMP_DOWN,
-        ROUND_OFF,
-    };
 
     if (ps->round == ROUND_OFF) {
         return;
@@ -263,8 +298,8 @@ void pixel_effect_init_rainbow(struct pixel_state *ps, int position, int max_pos
 {
     ps->effect = EFFECT_RAINBOW;
     ps->current.h = (HUE_MAX / max_position) * position;
-    ps->current.v = 0xff;
-    ps->current.s = 0xff;
+    ps->current.v = VAL_MAX;
+    ps->current.s = SAT_MAX;
 }
 
 void pixel_effect_rainbow(struct pixel_state *ps, int position)

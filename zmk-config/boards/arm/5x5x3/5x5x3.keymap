@@ -44,27 +44,27 @@
        backgrounds {
            colors = < &hsv HSV_AMBER >;
        };
+       batterys {
+           colors = < &hsv HSV_WHITE        &hsv HSV_RED >;
+       };
        desktops {
            colors =  < &hsv HSV_CHARTREUSE   &hsv HSV_YELLOW   &hsv HSV_ROSE   &hsv HSV_VIOLET   &hsv HSV_AZURE
                        &hsv HSV_MAGENTA      &hsv HSV_VOLTA    &hsv HSV_CYAN   &hsv HSV_SPRING   &hsv HSV_CRIMSON >;
        };
-       volumes {
-           colors =  < &hsv HSV_YELLOW       &hsv HSV_RED >;
+       endpoints {
+           colors = < &hsv HSV_RED          &hsv HSV_GREEN    &hsv HSV_BLUE >;
        };
        hids {
            colors =  < &hsv HSV_RED          &hsv HSV_GREEN    &hsv HSV_BLUE >;
        };
-       batterys {
-           colors = < &hsv HSV_WHITE        &hsv HSV_RED >;
-       };
        layers {
            colors = < &hsv HSV_MAGENTA      &hsv HSV_VOLTA    &hsv HSV_CYAN   &hsv HSV_SPRING   &hsv HSV_CRIMSON >;
        };
-       endpoints {
-           colors = < &hsv HSV_RED          &hsv HSV_GREEN    &hsv HSV_BLUE >;
-       };
        profiles {
            colors =  < &hsv HSV_BLUE         &hsv HSV_GREEN >;
+       };
+       volumes {
+           colors =  < &hsv HSV_YELLOW       &hsv HSV_RED >;
        };
    };
 };
