@@ -33,6 +33,7 @@ static const uint8_t lightgroup[ZMK_KEYMAP_LAYERS_LEN][STRIP_NUM_PIXELS] = {
 #define DT_PHA_BY_IDX_HSV(node_id, pha, idx) {.raw = DT_PHA_BY_IDX(node_id, pha, idx, hsv)}
 
 /* TODO: see if these similar stanzas can be rewritten as cpp statements */
+/* TODO: for the continuous types: assert that we have at least 2 values */
 static const uint8_t battery_num = DT_PROP_LEN(DT_PATH(colorgroup, batterys), colors);
 static const hsv_t battery[DT_PROP_LEN(DT_PATH(colorgroup, batterys), colors)] = {
     DT_FOREACH_PROP_ELEM_SEP(DT_PATH(colorgroup, batterys), colors, DT_PHA_BY_IDX_HSV, (,)) };
@@ -85,12 +86,20 @@ static void light_group_range_select(struct pixel_state *current, const hsv_t (*
     pixel_effect_init_hold(current, &(*group)[value]);
 }
 
-static void light_group_continuous(struct pixel_state *current, hsv_t start, hsv_t end,
-                                   fract8_t value)
+static void light_group_continuous(struct pixel_state *current, const hsv_t (*group)[],
+                                   uint8_t group_max, fract8_t percentage)
 {
+    uint8_t bucket_size = UINT8_MAX / (group_max - 1);
+    uint8_t start_index = (percentage / bucket_size);
+    fract8_t mix = (uint16_t)(UINT8_MAX * (percentage % bucket_size)) / bucket_size;
     hsv_t target;
-    hsv_transition(start, end, value, &target);
-    pixel_effect_init_hold(current, &target);
+
+    if (start_index == (group_max - 1)) {
+        pixel_effect_init_hold(current, &(*group)[start_index + 1]);
+    } else {
+        hsv_transition((*group)[start_index], (*group)[start_index + 1], mix, &target);
+        pixel_effect_init_hold(current, &target);
+    }
 }
 
 static void apply_ledlayout_for_group(uint8_t group)
@@ -105,7 +114,7 @@ static void apply_ledlayout_for_group(uint8_t group)
         struct pixel_state *current = &state[ledlayout[i]];
         switch (lightgroup[layer_value][i]) {
         case LG_BATTERY:
-            light_group_continuous(current, battery[0], battery[1], battery_value);
+            light_group_continuous(current, &battery, battery_num, battery_value);
             break;
 
         case LG_DESKTOP:
@@ -129,7 +138,7 @@ static void apply_ledlayout_for_group(uint8_t group)
             break;
 
         case LG_VOLUME:
-            light_group_continuous(current, volume[0], volume[1], volume_value);
+            light_group_continuous(current, &volume, volume_num, volume_value);
             break;
 
         default:
