@@ -78,11 +78,11 @@ static struct led_rgb pixels[STRIP_NUM_PIXELS];
 
 static struct pixel_state state[STRIP_NUM_PIXELS];
 
-static void light_group_range_select(struct pixel_state *current, const hsv_t *group,
+static void light_group_range_select(struct pixel_state *current, const hsv_t (*group)[],
                                      uint8_t group_max, uint8_t value)
 {
     value %= group_max;
-    pixel_effect_init_hold(current, &group[value]);
+    pixel_effect_init_hold(current, &(*group)[value]);
 }
 
 static void light_group_continuous(struct pixel_state *current, hsv_t start, hsv_t end,
@@ -131,6 +131,7 @@ static void apply_ledlayout_for_group(uint8_t group)
         case LG_VOLUME:
             light_group_continuous(current, volume[0], volume[1], volume_value);
             break;
+
         default:
             pixel_effect_init_rainbow(current, i, STRIP_NUM_PIXELS);
             break;
@@ -147,6 +148,7 @@ static void zmk_light_group_tick(struct k_work *work)
             break;
 
         case EFFECT_HOLD:
+            pixel_effect_hold(&state[i], i);
             break;
 
         case EFFECT_FLASH:
@@ -182,9 +184,9 @@ static int zmk_light_group_init(void)
 {
     led_strip = DEVICE_DT_GET(STRIP_CHOSEN);
 
+    memset(pixels, sizeof(pixels), 0);
+    memset(state, sizeof(state), 0);
     apply_ledlayout_for_group(LG_ALL);
-    for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-    }
 
     k_timer_start(&light_group_tick, K_NO_WAIT, K_MSEC(50));
 

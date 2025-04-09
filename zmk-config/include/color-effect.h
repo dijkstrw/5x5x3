@@ -26,7 +26,24 @@ struct pixel_state {
     uint8_t round;
 };
 
-#define STEP_MAX 0xff
+/*
+ * Effects have rounds, and move forward in steps during those rounds.  Our
+ * timer is fired every 50ms, so that means we have (1000 / 50) = 20 timer evals
+ * in one second.
+ *
+ * Our total effect time depends on the number of rounds in the effect. Hold
+ * just has a rampup away from current color to the next, so 1 round. Flash has
+ * rampup, hold, rampdown, so 3.
+ *
+ * The speed of the effect is then ((rounds * (step_max / speed_default) ) / 20)
+ * in seconds.
+ *
+ * 3ms seems a happy medium; giving nice fast responses where a complete effect
+ * can be done in 1 second.
+ */
+
+#define SPEED_DEFAULT 3
+#define STEP_MAX      200
 
 enum steps {
     ROUND_RAMPUP = 0,

@@ -222,6 +222,7 @@ void pixel_effect_init_hold(struct pixel_state *ps, hsv_t *target)
     ps->target = *target;
     ps->round = ROUND_RAMPUP;
     ps->step = 0;
+    ps->speed = SPEED_DEFAULT;
 }
 
 void pixel_effect_hold(struct pixel_state *ps, int position)
@@ -246,6 +247,7 @@ void pixel_effect_hold(struct pixel_state *ps, int position)
         ps->current = ps->target;
         break;
     }
+
     increase_round_step(ps);
     if (ps->round >= ROUND_OFF) {
         ps->round = ROUND_OFF;
@@ -259,6 +261,7 @@ void pixel_effect_init_flash(struct pixel_state *ps, hsv_t *target)
     ps->target = *target;
     ps->round = ROUND_RAMPUP;
     ps->step = 0;
+    ps->speed = SPEED_DEFAULT;
 }
 
 void pixel_effect_flash(struct pixel_state *ps, int position)
@@ -288,6 +291,7 @@ void pixel_effect_flash(struct pixel_state *ps, int position)
         hsv_transition(ps->target, ps->source, scale, &ps->current);
         break;
     }
+
     increase_round_step(ps);
     if (ps->round >= ROUND_OFF) {
         ps->round = ROUND_OFF;
@@ -304,6 +308,6 @@ void pixel_effect_init_rainbow(struct pixel_state *ps, int position, int max_pos
 
 void pixel_effect_rainbow(struct pixel_state *ps, int position)
 {
-    ps->current.h += 1;
+    ps->current.h += SPEED_DEFAULT;
     ps->current.h %= HUE_MAX;
 }
