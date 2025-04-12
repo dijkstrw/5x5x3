@@ -3,10 +3,13 @@
 #include <zephyr/drivers/led_strip.h>
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
+#include <zephyr/shell/shell.h>
 
 #include <zephyr/logging/log.h>
 #include <zmk/keymap.h>
 #include <zmk/workqueue.h>
+
+#include <stdlib.h>
 
 #include <color-effect.h>
 
@@ -29,6 +32,8 @@ BUILD_ASSERT(DT_NODE_EXISTS(DT_PATH(ledlayout)), "ledlayout not found for LIGHT_
 static const uint8_t ledlayout[STRIP_NUM_PIXELS] = DT_PROP(DT_PATH(ledlayout), bindings);
 static const uint8_t lightgroup[ZMK_KEYMAP_LAYERS_LEN][STRIP_NUM_PIXELS] = {
     DT_FOREACH_CHILD(DT_PATH(lightgroup), BINDINGS_ARRAY_AND_COMMA)};
+
+static uint8_t updated_groups = LG_ALL;
 
 #define DT_PHA_BY_IDX_HSV(node_id, pha, idx) {.raw = DT_PHA_BY_IDX(node_id, pha, idx, hsv)}
 
@@ -71,13 +76,35 @@ uint8_t profile_value;
 static const uint8_t volume_num = DT_PROP_LEN(DT_PATH(colorgroup, volumes), colors);
 static const hsv_t volume[DT_PROP_LEN(DT_PATH(colorgroup, volumes), colors)] = {
     DT_FOREACH_PROP_ELEM_SEP(DT_PATH(colorgroup, volumes), colors, DT_PHA_BY_IDX_HSV, (,)) };
-uint16_t volume_value;
+uint8_t volume_value;
 
 static const struct device *led_strip;
 
 static struct led_rgb pixels[STRIP_NUM_PIXELS];
 
 static struct pixel_state state[STRIP_NUM_PIXELS];
+
+static int cmd_desktop(const struct shell *sh, size_t argc, char **argv)
+{
+    desktop_value = atoi(argv[1]) % desktop_num;
+    updated_groups |= (1 << LG_DESKTOP);
+
+    return 0;
+}
+
+static int cmd_volume(const struct shell *sh, size_t argc, char **argv)
+{
+    volume_value = atoi(argv[1]);
+    updated_groups |= (1 << LG_VOLUME);
+
+    return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_lightgroup,
+                               SHELL_CMD_ARG(desktop, NULL, "Set desktop value", cmd_desktop, 2, 0),
+                               SHELL_CMD_ARG(volume, 0, "Set volume value", cmd_volume, 2, 0),
+                               SHELL_SUBCMD_SET_END);
+SHELL_CMD_REGISTER(lightgroup, &sub_lightgroup, "Light group values", NULL);
 
 static void light_group_range_select(struct pixel_state *current, const hsv_t (*group)[],
                                      uint8_t group_max, uint8_t value)
@@ -150,6 +177,35 @@ static void apply_ledlayout_for_group(uint8_t group)
 
 static void zmk_light_group_tick(struct k_work *work)
 {
+    if (updated_groups) {
+        if (updated_groups == LG_ALL) {
+            apply_ledlayout_for_group(LG_ALL);
+            updated_groups = 0;
+        }
+        if (updated_groups & (1 << LG_BATTERY)) {
+            apply_ledlayout_for_group(LG_BATTERY);
+        }
+        if (updated_groups & (1 << LG_DESKTOP)) {
+            apply_ledlayout_for_group(LG_DESKTOP);
+        }
+        if (updated_groups & (1 << LG_ENDPOINT)) {
+            apply_ledlayout_for_group(LG_ENDPOINT);
+        }
+        if (updated_groups & (1 << LG_HID)) {
+            apply_ledlayout_for_group(LG_HID);
+        }
+        if (updated_groups & (1 << LG_LAYER)) {
+            apply_ledlayout_for_group(LG_LAYER);
+        }
+        if (updated_groups & (1 << LG_PROFILE)) {
+            apply_ledlayout_for_group(LG_PROFILE);
+        }
+        if (updated_groups & (1 << LG_VOLUME)) {
+            apply_ledlayout_for_group(LG_VOLUME);
+        }
+        updated_groups = 0;
+    }
+
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
         switch (state[i].effect) {
         case EFFECT_OFF:
