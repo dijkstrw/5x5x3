@@ -69,7 +69,6 @@ static uint8_t ease8_inoutquad(uint8_t x)
 
 void hsv_transition(hsv_t source, hsv_t target, fract8_t fraction, hsv_t *result)
 {
-    int8_t sign;
     int16_t d;
 
     /* Hue is laid out in a circle, where 360° = 0°. We want to move
@@ -78,16 +77,18 @@ void hsv_transition(hsv_t source, hsv_t target, fract8_t fraction, hsv_t *result
      * other way.
      */
     d = target.h - source.h;
-    sign = (d >= 0) ? 1 : -1;
     if (d >= HUE_HALF) {
-        d -= HUE_HALF;
-        sign *= -1;
+        d = -1 * (HUE_MAX - d);
     } else if (d <= -HUE_HALF) {
-        d += HUE_HALF;
-        sign *= -1;
+        d += HUE_MAX;
     }
 
-    result->h = source.h + (scale_i16(d, fraction) * sign);
+    d = source.h + scale_i16(d, fraction);
+    if (d < 0) {
+        d += HUE_MAX;
+    }
+    result->h = d % HUE_MAX;
+
     d = target.s - source.s;
     result->s = source.s + scale_i16(d, fraction);
     d = target.v - source.v;
