@@ -38,12 +38,10 @@ struct pixel_state {
  * The speed of the effect is then ((rounds * (step_max / speed_default) ) / 20)
  * in seconds.
  *
- * 3ms seems a happy medium; giving nice fast responses where a complete effect
- * can be done in 1 second.
  */
 
-#define SPEED_DEFAULT 3
-#define STEP_MAX      200
+#define SPEED_DEFAULT 13
+#define STEP_MAX      255
 
 enum steps {
     ROUND_RAMPUP = 0,
