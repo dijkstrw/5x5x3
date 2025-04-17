@@ -82,14 +82,14 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_lightgroup,
                                SHELL_SUBCMD_SET_END);
 SHELL_CMD_REGISTER(lightgroup, &sub_lightgroup, "Light group values", NULL);
 
-static void light_group_range_select(struct pixel_state *current, const hsv_t (*group)[],
+static void light_group_range_select(struct pixel_state *current, const hsv_t *group,
                                      uint8_t group_max, uint8_t value)
 {
     value %= group_max;
-    pixel_effect_init_hold(current, &(*group)[value]);
+    pixel_effect_init_hold(current, &group[value]);
 }
 
-static void light_group_continuous(struct pixel_state *current, const hsv_t (*group)[],
+static void light_group_continuous(struct pixel_state *current, const hsv_t *group,
                                    uint8_t group_max, fract8_t percentage)
 {
     uint8_t bucket_size = UINT8_MAX / (group_max - 1);
@@ -98,9 +98,9 @@ static void light_group_continuous(struct pixel_state *current, const hsv_t (*gr
     hsv_t target;
 
     if (start_index == (group_max - 1)) {
-        pixel_effect_init_hold(current, &(*group)[start_index + 1]);
+        pixel_effect_init_hold(current, &group[start_index + 1]);
     } else {
-        hsv_transition((*group)[start_index], (*group)[start_index + 1], mix, &target);
+        hsv_transition(group[start_index], group[start_index + 1], mix, &target);
         pixel_effect_init_hold(current, &target);
     }
 }
@@ -117,31 +117,31 @@ static void apply_ledlayout_for_group(uint8_t group)
         struct pixel_state *current = &state[ledlayout[i]];
         switch (lightgroup[layer_value][i]) {
         case LG_BATTERY:
-            light_group_continuous(current, &battery, battery_num, battery_value);
+            light_group_continuous(current, battery, battery_num, battery_value);
             break;
 
         case LG_DESKTOP:
-            light_group_range_select(current, &desktop, desktop_num, desktop_value);
+            light_group_range_select(current, desktop, desktop_num, desktop_value);
             break;
 
         case LG_ENDPOINT:
-            light_group_range_select(current, &endpoint, endpoint_num, endpoint_value);
+            light_group_range_select(current, endpoint, endpoint_num, endpoint_value);
             break;
 
         case LG_HID:
-            light_group_range_select(current, &hid, hid_num, hid_value);
+            light_group_range_select(current, hid, hid_num, hid_value);
             break;
 
         case LG_LAYER:
-            light_group_range_select(current, &layer, layer_num, layer_value);
+            light_group_range_select(current, layer, layer_num, layer_value);
             break;
 
         case LG_PROFILE:
-            light_group_range_select(current, &profile, profile_num, profile_value);
+            light_group_range_select(current, profile, profile_num, profile_value);
             break;
 
         case LG_VOLUME:
-            light_group_continuous(current, &volume, volume_num, volume_value);
+            light_group_continuous(current, volume, volume_num, volume_value);
             break;
 
         default:
