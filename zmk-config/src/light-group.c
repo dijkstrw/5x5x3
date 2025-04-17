@@ -37,46 +37,22 @@ static uint8_t updated_groups = LG_ALL;
 
 #define DT_PHA_BY_IDX_HSV(node_id, pha, idx) {.raw = DT_PHA_BY_IDX(node_id, pha, idx, hsv)}
 
-/* TODO: see if these similar stanzas can be rewritten as cpp statements */
-/* TODO: for the continuous types: assert that we have at least 2 values */
-static const uint8_t battery_num = DT_PROP_LEN(DT_PATH(colorgroup, batterys), colors);
-static const hsv_t battery[DT_PROP_LEN(DT_PATH(colorgroup, batterys), colors)] = {
-    DT_FOREACH_PROP_ELEM_SEP(DT_PATH(colorgroup, batterys), colors, DT_PHA_BY_IDX_HSV, (,)) };
-uint8_t battery_value = 0;
+#define DEFINE_COLOR_GROUP(name, min_len)                                                          \
+    BUILD_ASSERT(DT_PROP_LEN(DT_PATH(colorgroup, name##s), colors) >= min_len,                     \
+                 "colorgroup/" #name "s must have at least " #min_len " colors");                  \
+    static const uint8_t name##_num = DT_PROP_LEN(DT_PATH(colorgroup, name##s), colors);           \
+    static const hsv_t name[DT_PROP_LEN(DT_PATH(colorgroup, name##s), colors)] = {                 \
+        DT_FOREACH_PROP_ELEM_SEP(DT_PATH(colorgroup, name##s), colors, DT_PHA_BY_IDX_HSV, (,)) };      \
+    uint8_t name##_value = 0;
 
-static const uint8_t background_num = DT_PROP_LEN(DT_PATH(colorgroup, backgrounds), colors);
-static const hsv_t background[DT_PROP_LEN(DT_PATH(colorgroup, backgrounds), colors)] = {
-    DT_FOREACH_PROP_ELEM_SEP(DT_PATH(colorgroup, backgrounds), colors, DT_PHA_BY_IDX_HSV, (,)) };
-uint8_t background_value = 0;
-
-static const uint8_t desktop_num = DT_PROP_LEN(DT_PATH(colorgroup, desktops), colors);
-static const hsv_t desktop[DT_PROP_LEN(DT_PATH(colorgroup, desktops), colors)] = {
-    DT_FOREACH_PROP_ELEM_SEP(DT_PATH(colorgroup, desktops), colors, DT_PHA_BY_IDX_HSV, (,)) };
-uint8_t desktop_value = 0;
-
-static const uint8_t endpoint_num = DT_PROP_LEN(DT_PATH(colorgroup, endpoints), colors);
-static const hsv_t endpoint[DT_PROP_LEN(DT_PATH(colorgroup, endpoints), colors)] = {
-    DT_FOREACH_PROP_ELEM_SEP(DT_PATH(colorgroup, endpoints), colors, DT_PHA_BY_IDX_HSV, (,)) };
-uint8_t endpoint_value;
-
-static const uint8_t hid_num = DT_PROP_LEN(DT_PATH(colorgroup, hids), colors);
-static const hsv_t hid[DT_PROP_LEN(DT_PATH(colorgroup, hids), colors)] = {
-    DT_FOREACH_PROP_ELEM_SEP(DT_PATH(colorgroup, hids), colors, DT_PHA_BY_IDX_HSV, (,)) };
-uint8_t hid_value;
-
-static const uint8_t layer_num = DT_PROP_LEN(DT_PATH(colorgroup, layers), colors);
-static const hsv_t layer[DT_PROP_LEN(DT_PATH(colorgroup, layers), colors)] = {
-    DT_FOREACH_PROP_ELEM_SEP(DT_PATH(colorgroup, layers), colors, DT_PHA_BY_IDX_HSV, (,)) };
-
-static const uint8_t profile_num = DT_PROP_LEN(DT_PATH(colorgroup, profiles), colors);
-static const hsv_t profile[DT_PROP_LEN(DT_PATH(colorgroup, profiles), colors)] = {
-    DT_FOREACH_PROP_ELEM_SEP(DT_PATH(colorgroup, profiles), colors, DT_PHA_BY_IDX_HSV, (,)) };
-uint8_t profile_value;
-
-static const uint8_t volume_num = DT_PROP_LEN(DT_PATH(colorgroup, volumes), colors);
-static const hsv_t volume[DT_PROP_LEN(DT_PATH(colorgroup, volumes), colors)] = {
-    DT_FOREACH_PROP_ELEM_SEP(DT_PATH(colorgroup, volumes), colors, DT_PHA_BY_IDX_HSV, (,)) };
-uint8_t volume_value;
+DEFINE_COLOR_GROUP(battery, 2)
+DEFINE_COLOR_GROUP(background, 1)
+DEFINE_COLOR_GROUP(desktop, 1)
+DEFINE_COLOR_GROUP(endpoint, 1)
+DEFINE_COLOR_GROUP(hid, 2)
+DEFINE_COLOR_GROUP(layer, 1)
+DEFINE_COLOR_GROUP(profile, 2)
+DEFINE_COLOR_GROUP(volume, 2)
 
 static const struct device *led_strip;
 
