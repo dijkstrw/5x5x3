@@ -7,6 +7,10 @@
 
 #include <zephyr/logging/log.h>
 #include <zmk/keymap.h>
+#include <zmk/events/endpoint_changed.h>
+#include <zmk/events/layer_state_changed.h>
+#include <zmk/events/hid_indicators_changed.h>
+#include <zmk/events/ble_active_profile_changed.h>
 #include <zmk/workqueue.h>
 
 #include <stdlib.h>
@@ -150,6 +154,61 @@ static void apply_ledlayout_for_group(uint8_t group)
         }
     }
 }
+
+static bool handle_layer_change(const zmk_event_t *eh)
+{
+    const struct zmk_layer_state_changed_event *ev =
+        (const struct zmk_layer_state_changed_event *)eh;
+    if (ev->data.state && ev->data.layer != layer_value) {
+        layer_value = ev->data.layer;
+        updated_groups |= (1 << LG_LAYER);
+    }
+    return false;
+}
+
+ZMK_LISTENER(light_group_layer, handle_layer_change);
+ZMK_SUBSCRIPTION(light_group_layer, zmk_layer_state_changed);
+
+static bool handle_endpoint_change(const zmk_event_t *eh)
+{
+    const struct zmk_endpoint_changed_event *ev = (const struct zmk_endpoint_changed_event *)eh;
+    uint8_t new_endpoint = (ev->data.endpoint.transport == ZMK_TRANSPORT_USB) ? 0 : 1;
+    if (new_endpoint != endpoint_value) {
+        endpoint_value = new_endpoint;
+        updated_groups |= (1 << LG_ENDPOINT);
+    }
+    return false;
+}
+
+ZMK_LISTENER(light_group_endpoint, handle_endpoint_change);
+ZMK_SUBSCRIPTION(light_group_endpoint, zmk_endpoint_changed);
+
+static bool handle_hid_change(const zmk_event_t *eh)
+{
+    const struct zmk_hid_indicators_changed *ev = (const struct zmk_hid_indicators_changed *)eh;
+    if (ev->indicators != hid_value) {
+        hid_value = ev->indicators;
+        updated_groups |= (1 << LG_HID);
+    }
+    return false;
+}
+
+ZMK_LISTENER(light_group_hid, handle_hid_change);
+ZMK_SUBSCRIPTION(light_group_hid, zmk_hid_indicators_changed);
+
+static bool handle_profile_change(const zmk_event_t *eh)
+{
+    const struct zmk_ble_active_profile_changed_event *ev =
+        (const struct zmk_ble_active_profile_changed_event *)eh;
+    if (ev->data.profile != profile_value) {
+        profile_value = ev->data.profile;
+        updated_groups |= (1 << LG_PROFILE);
+    }
+    return false;
+}
+
+ZMK_LISTENER(light_group_profile, handle_profile_change);
+ZMK_SUBSCRIPTION(light_group_profile, zmk_ble_active_profile_changed);
 
 static void zmk_light_group_tick(struct k_work *work)
 {
