@@ -166,6 +166,7 @@ static int handle_battery_change(const zmk_event_t *eh)
 {
     const struct zmk_battery_state_changed *ev = (const struct zmk_battery_state_changed *)eh;
     if (ev->state_of_charge != battery_value) {
+        /* Called with the computed state of charge in a percentage */
         battery_value = ev->state_of_charge;
         updated_groups |= (1 << LG_BATTERY);
     }
@@ -209,6 +210,7 @@ static int handle_hid_change(const zmk_event_t *eh)
 {
     const struct zmk_hid_indicators_changed *ev = (const struct zmk_hid_indicators_changed *)eh;
     if (ev->indicators != hid_value) {
+        /* Indicators is an uint8_t with the HID indicators as per the standard report */
         hid_value = ev->indicators;
         updated_groups |= (1 << LG_HID);
     }
@@ -218,17 +220,18 @@ static int handle_hid_change(const zmk_event_t *eh)
 ZMK_LISTENER(light_group_hid, handle_hid_change);
 ZMK_SUBSCRIPTION(light_group_hid, zmk_hid_indicators_changed);
 
-static int handle_profile_change(const zmk_event_t *eh)
+static int handle_ble_profile_change(const zmk_event_t *eh)
 {
     uint8_t profile = zmk_ble_active_profile_index();
     if (profile != profile_value) {
+        /* Index into the ble profile array */
         profile_value = profile;
         updated_groups |= (1 << LG_PROFILE);
     }
     return 0;
 }
 
-ZMK_LISTENER(light_group_profile, handle_profile_change);
+ZMK_LISTENER(light_group_profile, handle_ble_profile_change);
 ZMK_SUBSCRIPTION(light_group_profile, zmk_ble_active_profile_changed);
 
 static void zmk_light_group_tick(struct k_work *work)
