@@ -53,9 +53,9 @@ enum steps {
 void hsv2rgb(hsv_t *h, struct led_rgb *p);
 void hsv_transition(hsv_t source, hsv_t target, fract8_t fraction, hsv_t *result);
 void pixel_effect_off(struct pixel_state *ps, int position);
-void pixel_effect_init_hold(struct pixel_state *ps, hsv_t *target);
+void pixel_effect_init_hold(struct pixel_state *ps, hsv_t target);
 void pixel_effect_hold(struct pixel_state *ps, int position);
-void pixel_effect_init_flash(struct pixel_state *ps, hsv_t *target);
+void pixel_effect_init_flash(struct pixel_state *ps, hsv_t target);
 void pixel_effect_flash(struct pixel_state *ps, int position);
 void pixel_effect_init_rainbow(struct pixel_state *ps, int position, int max_position);
 void pixel_effect_rainbow(struct pixel_state *ps, int position);

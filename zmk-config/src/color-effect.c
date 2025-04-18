@@ -216,11 +216,11 @@ void pixel_effect_off(struct pixel_state *ps, int position)
     ps->target.v = 0;
 }
 
-void pixel_effect_init_hold(struct pixel_state *ps, hsv_t *target)
+void pixel_effect_init_hold(struct pixel_state *ps, hsv_t target)
 {
     ps->effect = EFFECT_HOLD;
     ps->source = ps->current;
-    ps->target = *target;
+    ps->target = target;
     ps->round = ROUND_RAMPUP;
     ps->step = 0;
     ps->speed = SPEED_DEFAULT;
@@ -255,11 +255,11 @@ void pixel_effect_hold(struct pixel_state *ps, int position)
     }
 }
 
-void pixel_effect_init_flash(struct pixel_state *ps, hsv_t *target)
+void pixel_effect_init_flash(struct pixel_state *ps, hsv_t target)
 {
     ps->effect = EFFECT_FLASH;
     ps->source = ps->current;
-    ps->target = *target;
+    ps->target = target;
     ps->round = ROUND_RAMPUP;
     ps->step = 0;
     ps->speed = SPEED_DEFAULT;

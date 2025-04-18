@@ -91,7 +91,7 @@ static void light_group_range_select(struct pixel_state *current, const hsv_t *g
                                      uint8_t group_max, uint8_t value)
 {
     value %= group_max;
-    pixel_effect_init_hold(current, &group[value]);
+    pixel_effect_init_hold(current, group[value]);
 }
 
 static void light_group_continuous(struct pixel_state *current, const hsv_t *group,
@@ -103,10 +103,10 @@ static void light_group_continuous(struct pixel_state *current, const hsv_t *gro
     hsv_t target;
 
     if (start_index == (group_max - 1)) {
-        pixel_effect_init_hold(current, &group[start_index + 1]);
+        pixel_effect_init_hold(current, group[start_index + 1]);
     } else {
         hsv_transition(group[start_index], group[start_index + 1], mix, &target);
-        pixel_effect_init_hold(current, &target);
+        pixel_effect_init_hold(current, target);
     }
 }
 
