@@ -7,6 +7,7 @@
 
 #include <zephyr/logging/log.h>
 #include <zmk/keymap.h>
+#include <zmk/events/battery_state_changed.h>
 #include <zmk/events/endpoint_changed.h>
 #include <zmk/events/layer_state_changed.h>
 #include <zmk/events/hid_indicators_changed.h>
@@ -154,6 +155,19 @@ static void apply_ledlayout_for_group(uint8_t group)
         }
     }
 }
+
+static bool handle_battery_change(const zmk_event_t *eh)
+{
+    const struct zmk_battery_state_changed *ev = (const struct zmk_battery_state_changed *)eh;
+    if (ev->state_of_charge != battery_value) {
+        battery_value = ev->state_of_charge;
+        updated_groups |= (1 << LG_BATTERY);
+    }
+    return false;
+}
+
+ZMK_LISTENER(light_group_battery, handle_battery_change);
+ZMK_SUBSCRIPTION(light_group_battery, zmk_battery_state_changed);
 
 static bool handle_layer_change(const zmk_event_t *eh)
 {
