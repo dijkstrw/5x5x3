@@ -7,6 +7,7 @@
 
 #include <zephyr/logging/log.h>
 #include <zmk/keymap.h>
+#include <zmk/endpoints.h>
 #include <zmk/events/battery_state_changed.h>
 #include <zmk/events/endpoint_changed.h>
 #include <zmk/events/layer_state_changed.h>
@@ -50,8 +51,8 @@ static uint8_t updated_groups = LG_ALL;
         DT_FOREACH_PROP_ELEM_SEP(DT_PATH(colorgroup, name##s), colors, DT_PHA_BY_IDX_HSV, (,)) };      \
     uint8_t name##_value = 0;
 
-DEFINE_COLOR_GROUP(battery, 2)
 DEFINE_COLOR_GROUP(background, 1)
+DEFINE_COLOR_GROUP(battery, 2)
 DEFINE_COLOR_GROUP(desktop, 1)
 DEFINE_COLOR_GROUP(endpoint, 1)
 DEFINE_COLOR_GROUP(hid, 2)
@@ -114,13 +115,18 @@ static void apply_ledlayout_for_group(uint8_t group)
 {
     zmk_keymap_layer_index_t layer_value = zmk_keymap_highest_layer_active();
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-        /* Partial update if requested */
         if ((lightgroup[layer_value][i] != group) && (group != LG_ALL)) {
+            /* Current pixel group is not the one we are updating, skip */
             continue;
         }
 
         struct pixel_state *current = &state[ledlayout[i]];
+
         switch (lightgroup[layer_value][i]) {
+        case LG_BACKGROUND:
+            light_group_range_select(current, background, background_num, background_value);
+            break;
+
         case LG_BATTERY:
             light_group_continuous(current, battery, battery_num, battery_value);
             break;
@@ -156,20 +162,36 @@ static void apply_ledlayout_for_group(uint8_t group)
     }
 }
 
-static bool handle_battery_change(const zmk_event_t *eh)
+static int handle_battery_change(const zmk_event_t *eh)
 {
     const struct zmk_battery_state_changed *ev = (const struct zmk_battery_state_changed *)eh;
     if (ev->state_of_charge != battery_value) {
         battery_value = ev->state_of_charge;
         updated_groups |= (1 << LG_BATTERY);
     }
-    return false;
+    return 0;
 }
 
 ZMK_LISTENER(light_group_battery, handle_battery_change);
 ZMK_SUBSCRIPTION(light_group_battery, zmk_battery_state_changed);
 
-static bool handle_layer_change(const zmk_event_t *eh)
+static int handle_endpoint_change(const zmk_event_t *eh)
+{
+    const struct zmk_endpoint_changed_event *ev = (const struct zmk_endpoint_changed_event *)eh;
+    uint8_t new_endpoint = zmk_endpoint_instance_to_index(ev->data.endpoint);
+    if (new_endpoint != endpoint_value) {
+        /* ENDPOINT_USB = 0 and ENDPOINT_BLE = [1..n], depending on current BLE profile */
+        endpoint_value = new_endpoint;
+        updated_groups |= (1 << LG_ENDPOINT);
+    }
+    /* TODO: loss of USB = loss of ∞ battery */
+    return 0;
+}
+
+ZMK_LISTENER(light_group_endpoint, handle_endpoint_change);
+ZMK_SUBSCRIPTION(light_group_endpoint, zmk_endpoint_changed);
+
+static int handle_layer_change(const zmk_event_t *eh)
 {
     const struct zmk_layer_state_changed_event *ev =
         (const struct zmk_layer_state_changed_event *)eh;
@@ -177,48 +199,33 @@ static bool handle_layer_change(const zmk_event_t *eh)
         layer_value = ev->data.layer;
         updated_groups |= (1 << LG_LAYER);
     }
-    return false;
+    return 0;
 }
 
 ZMK_LISTENER(light_group_layer, handle_layer_change);
 ZMK_SUBSCRIPTION(light_group_layer, zmk_layer_state_changed);
 
-static bool handle_endpoint_change(const zmk_event_t *eh)
-{
-    const struct zmk_endpoint_changed_event *ev = (const struct zmk_endpoint_changed_event *)eh;
-    uint8_t new_endpoint = (ev->data.endpoint.transport == ZMK_TRANSPORT_USB) ? 0 : 1;
-    if (new_endpoint != endpoint_value) {
-        endpoint_value = new_endpoint;
-        updated_groups |= (1 << LG_ENDPOINT);
-    }
-    return false;
-}
-
-ZMK_LISTENER(light_group_endpoint, handle_endpoint_change);
-ZMK_SUBSCRIPTION(light_group_endpoint, zmk_endpoint_changed);
-
-static bool handle_hid_change(const zmk_event_t *eh)
+static int handle_hid_change(const zmk_event_t *eh)
 {
     const struct zmk_hid_indicators_changed *ev = (const struct zmk_hid_indicators_changed *)eh;
     if (ev->indicators != hid_value) {
         hid_value = ev->indicators;
         updated_groups |= (1 << LG_HID);
     }
-    return false;
+    return 0;
 }
 
 ZMK_LISTENER(light_group_hid, handle_hid_change);
 ZMK_SUBSCRIPTION(light_group_hid, zmk_hid_indicators_changed);
 
-static bool handle_profile_change(const zmk_event_t *eh)
+static int handle_profile_change(const zmk_event_t *eh)
 {
-    const struct zmk_ble_active_profile_changed_event *ev =
-        (const struct zmk_ble_active_profile_changed_event *)eh;
-    if (ev->data.profile != profile_value) {
-        profile_value = ev->data.profile;
+    uint8_t profile = zmk_ble_active_profile_index();
+    if (profile != profile_value) {
+        profile_value = profile;
         updated_groups |= (1 << LG_PROFILE);
     }
-    return false;
+    return 0;
 }
 
 ZMK_LISTENER(light_group_profile, handle_profile_change);
