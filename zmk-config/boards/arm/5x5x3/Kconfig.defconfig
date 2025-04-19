@@ -19,6 +19,26 @@ config ZMK_LIGHT_GROUP
 
 if ZMK_LIGHT_GROUP
 
+config ZMK_LIGHT_GROUP_EXT_POWER
+    bool "Underglow toggling also controls external power"
+    default y
+
+config ZMK_LIGHT_GROUP_AUTO_OFF_IDLE
+    bool "Turn off lightgroup when keyboard goes into idle state"
+    default y
+
+config ZMK_LIGHT_GROUP_AUTO_OFF_USB
+    bool "Turn off lightgroup when USB is disconnected"
+    default y
+
+config ZMK_LIGHT_GROUP_SPEED
+    int "Default effect speed (1-255)"
+    default 13
+
+config ZMK_LIGHT_GROUP_ON_START
+    bool "Default on state"
+    default y
+
 config WS2812_STRIP
     default y
 

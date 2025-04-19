@@ -1,30 +1,36 @@
-#include <zephyr/device.h>
 #include <zephyr/devicetree.h>
+#include <zephyr/device.h>
 #include <zephyr/drivers/led_strip.h>
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
 #include <zephyr/shell/shell.h>
 
-#include <zephyr/logging/log.h>
-#include <zmk/keymap.h>
+#include <zmk/activity.h>
 #include <zmk/endpoints.h>
+#include <zmk/events/activity_state_changed.h>
 #include <zmk/events/battery_state_changed.h>
-#include <zmk/events/endpoint_changed.h>
-#include <zmk/events/layer_state_changed.h>
-#include <zmk/events/hid_indicators_changed.h>
 #include <zmk/events/ble_active_profile_changed.h>
+#include <zmk/events/endpoint_changed.h>
+#include <zmk/events/hid_indicators_changed.h>
+#include <zmk/events/layer_state_changed.h>
+#include <zmk/events/usb_conn_state_changed.h>
+#include <zmk/keymap.h>
+#include <zmk/usb.h>
 #include <zmk/workqueue.h>
 
 #include <stdlib.h>
 
 #include <color-effect.h>
 
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_EXT_POWER)
+#include <drivers/ext_power.h>
+#endif
+
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 #if DT_HAS_CHOSEN(zmk_underglow)
-
 #error "zmk,underglow is incompatible with zmk,light-group"
-
 #endif
 
 BUILD_ASSERT(DT_NODE_EXISTS(DT_PATH(ledlayout)), "ledlayout not found for LIGHT_GROUP");
@@ -40,6 +46,7 @@ static const uint8_t lightgroup[ZMK_KEYMAP_LAYERS_LEN][STRIP_NUM_PIXELS] = {
     DT_FOREACH_CHILD(DT_PATH(lightgroup), BINDINGS_ARRAY_AND_COMMA)};
 
 static uint8_t updated_groups = LG_ALL;
+static bool light_group_enabled = IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_ON_START);
 
 #define DT_PHA_BY_IDX_HSV(node_id, pha, idx) {.raw = DT_PHA_BY_IDX(node_id, pha, idx, hsv)}
 
@@ -61,6 +68,9 @@ DEFINE_COLOR_GROUP(profile, 2)
 DEFINE_COLOR_GROUP(volume, 2)
 
 static const struct device *led_strip;
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_EXT_POWER)
+static const struct device *const ext_power = DEVICE_DT_GET(DT_INST(0, zmk_ext_power_generic));
+#endif
 
 static struct led_rgb pixels[STRIP_NUM_PIXELS];
 
@@ -68,7 +78,7 @@ static struct pixel_state state[STRIP_NUM_PIXELS];
 
 static int cmd_desktop(const struct shell *sh, size_t argc, char **argv)
 {
-    desktop_value = atoi(argv[1]) % desktop_num;
+    desktop_value = atoi(argv[1]);
     updated_groups |= (1 << LG_DESKTOP);
 
     return 0;
@@ -185,7 +195,6 @@ static int handle_endpoint_change(const zmk_event_t *eh)
         endpoint_value = new_endpoint;
         updated_groups |= (1 << LG_ENDPOINT);
     }
-    /* TODO: loss of USB = loss of ∞ battery */
     return 0;
 }
 
@@ -297,22 +306,127 @@ K_WORK_DEFINE(light_group_tick_work, zmk_light_group_tick);
 
 static void zmk_light_group_tick_handler(struct k_timer *timer)
 {
-    /* TODO: bail out here when usb is not connected */
+    if (!light_group_enabled) {
+        return;
+    }
 
     k_work_submit_to_queue(zmk_workqueue_lowprio_work_q(), &light_group_tick_work);
 }
 
 K_TIMER_DEFINE(light_group_tick, zmk_light_group_tick_handler, 0);
 
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB) ||                                             \
+    IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_IDLE)
+struct light_group_sleep_state {
+    bool is_awake;
+    bool light_group_state_before_sleeping;
+};
+
+static int light_group_auto_state(bool target_wake_state)
+{
+    static struct light_group_sleep_state sleep_state = {
+        .is_awake = true, .light_group_state_before_sleeping = false};
+
+    if (target_wake_state == sleep_state.is_awake) {
+        return 0;
+    }
+    sleep_state.is_awake = target_wake_state;
+
+    if (sleep_state.is_awake) {
+        if (sleep_state.light_group_state_before_sleeping) {
+            return zmk_light_group_on();
+        }
+    } else {
+        bool was_on = true; // TODO: Replace with a getter if available
+        sleep_state.light_group_state_before_sleeping = was_on;
+        zmk_light_group_off();
+    }
+    return 0;
+}
+
+static int handle_light_group_auto_off_events(const zmk_event_t *eh)
+{
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_IDLE)
+    if (as_zmk_activity_state_changed(eh)) {
+        return light_group_auto_state(zmk_activity_get_state() == ZMK_ACTIVITY_ACTIVE);
+    }
+#endif
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB)
+    if (as_zmk_usb_conn_state_changed(eh)) {
+        return light_group_auto_state(zmk_usb_is_powered());
+    }
+#endif
+    return 0;
+}
+
+ZMK_LISTENER(light_group_auto_off, handle_light_group_auto_off_events);
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_IDLE)
+ZMK_SUBSCRIPTION(light_group_auto_off, zmk_activity_state_changed);
+#endif
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB)
+ZMK_SUBSCRIPTION(light_group_auto_off, zmk_usb_conn_state_changed);
+#endif
+#endif
+
+int zmk_light_group_on(void)
+{
+    if (!led_strip) {
+        return -ENODEV;
+    }
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_EXT_POWER)
+    if (ext_power != NULL) {
+        int rc = ext_power_enable(ext_power);
+        if (rc != 0) {
+            LOG_ERR("Unable to enable EXT_POWER: %d", rc);
+        }
+    }
+#endif
+    k_timer_start(&light_group_tick, K_NO_WAIT, K_MSEC(50));
+    return 0;
+}
+
+static void zmk_light_group_off_handler(struct k_work *work)
+{
+    for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
+        pixels[i] = (struct led_rgb){.r = 0, .g = 0, .b = 0};
+    }
+    led_strip_update_rgb(led_strip, pixels, STRIP_NUM_PIXELS);
+}
+
+K_WORK_DEFINE(light_group_off_work, zmk_light_group_off_handler);
+
+int zmk_light_group_off(void)
+{
+    if (!led_strip) {
+        return -ENODEV;
+    }
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_EXT_POWER)
+    if (ext_power != NULL) {
+        int rc = ext_power_disable(ext_power);
+        if (rc != 0) {
+            LOG_ERR("Unable to disable EXT_POWER: %d", rc);
+        }
+    }
+#endif
+    k_work_submit_to_queue(zmk_workqueue_lowprio_work_q(), &light_group_off_work);
+    k_timer_stop(&light_group_tick);
+    return 0;
+}
+
 static int zmk_light_group_init(void)
 {
     led_strip = DEVICE_DT_GET(STRIP_CHOSEN);
-
     memset(pixels, sizeof(pixels), 0);
     memset(state, sizeof(state), 0);
     apply_ledlayout_for_group(LG_ALL);
 
-    k_timer_start(&light_group_tick, K_NO_WAIT, K_MSEC(50));
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB)
+    light_group_enabled = zmk_usb_is_powered();
+#endif
+
+    if (light_group_enabled) {
+        zmk_light_group_on();
+    }
 
     return 0;
 }

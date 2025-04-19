@@ -40,7 +40,6 @@ struct pixel_state {
  *
  */
 
-#define SPEED_DEFAULT 13
 #define STEP_MAX      255
 
 enum steps {

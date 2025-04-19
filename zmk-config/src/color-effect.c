@@ -38,6 +38,8 @@
 
 #define STRIP_NUM_PIXELS DT_PROP_LEN(DT_PATH(ledlayout), bindings)
 
+uint8_t effect_speed = CONFIG_ZMK_LIGHT_GROUP_SPEED;
+
 static uint8_t scale_u8(uint8_t i, fract8_t scale)
 {
     return ((uint16_t)i * (uint16_t)(scale)) >> 8;
@@ -223,7 +225,7 @@ void pixel_effect_init_hold(struct pixel_state *ps, hsv_t target)
     ps->target = target;
     ps->round = ROUND_RAMPUP;
     ps->step = 0;
-    ps->speed = SPEED_DEFAULT;
+    ps->speed = effect_speed;
 }
 
 void pixel_effect_hold(struct pixel_state *ps, int position)
@@ -262,7 +264,7 @@ void pixel_effect_init_flash(struct pixel_state *ps, hsv_t target)
     ps->target = target;
     ps->round = ROUND_RAMPUP;
     ps->step = 0;
-    ps->speed = SPEED_DEFAULT;
+    ps->speed = effect_speed;
 }
 
 void pixel_effect_flash(struct pixel_state *ps, int position)
@@ -309,6 +311,6 @@ void pixel_effect_init_rainbow(struct pixel_state *ps, int position, int max_pos
 
 void pixel_effect_rainbow(struct pixel_state *ps, int position)
 {
-    ps->current.h += SPEED_DEFAULT;
+    ps->current.h += effect_speed;
     ps->current.h %= HUE_MAX;
 }
