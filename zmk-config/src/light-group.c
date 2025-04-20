@@ -46,7 +46,7 @@ static const uint8_t lightgroup[ZMK_KEYMAP_LAYERS_LEN][STRIP_NUM_PIXELS] = {
     DT_FOREACH_CHILD(DT_PATH(lightgroup), BINDINGS_ARRAY_AND_COMMA)};
 
 static uint8_t updated_groups = LG_ALL;
-static bool light_group_enabled = IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_ON_START);
+static bool light_group_enabled = true;
 
 #define DT_PHA_BY_IDX_HSV(node_id, pha, idx) {.raw = DT_PHA_BY_IDX(node_id, pha, idx, hsv)}
 
@@ -315,59 +315,6 @@ static void zmk_light_group_tick_handler(struct k_timer *timer)
 
 K_TIMER_DEFINE(light_group_tick, zmk_light_group_tick_handler, 0);
 
-#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB) ||                                             \
-    IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_IDLE)
-struct light_group_sleep_state {
-    bool is_awake;
-    bool light_group_state_before_sleeping;
-};
-
-static int light_group_auto_state(bool target_wake_state)
-{
-    static struct light_group_sleep_state sleep_state = {
-        .is_awake = true, .light_group_state_before_sleeping = false};
-
-    if (target_wake_state == sleep_state.is_awake) {
-        return 0;
-    }
-    sleep_state.is_awake = target_wake_state;
-
-    if (sleep_state.is_awake) {
-        if (sleep_state.light_group_state_before_sleeping) {
-            return zmk_light_group_on();
-        }
-    } else {
-        bool was_on = true; // TODO: Replace with a getter if available
-        sleep_state.light_group_state_before_sleeping = was_on;
-        zmk_light_group_off();
-    }
-    return 0;
-}
-
-static int handle_light_group_auto_off_events(const zmk_event_t *eh)
-{
-#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_IDLE)
-    if (as_zmk_activity_state_changed(eh)) {
-        return light_group_auto_state(zmk_activity_get_state() == ZMK_ACTIVITY_ACTIVE);
-    }
-#endif
-#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB)
-    if (as_zmk_usb_conn_state_changed(eh)) {
-        return light_group_auto_state(zmk_usb_is_powered());
-    }
-#endif
-    return 0;
-}
-
-ZMK_LISTENER(light_group_auto_off, handle_light_group_auto_off_events);
-#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_IDLE)
-ZMK_SUBSCRIPTION(light_group_auto_off, zmk_activity_state_changed);
-#endif
-#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB)
-ZMK_SUBSCRIPTION(light_group_auto_off, zmk_usb_conn_state_changed);
-#endif
-#endif
-
 int zmk_light_group_on(void)
 {
     if (!led_strip) {
@@ -381,6 +328,7 @@ int zmk_light_group_on(void)
         }
     }
 #endif
+    light_group_enabled = true;
     k_timer_start(&light_group_tick, K_NO_WAIT, K_MSEC(50));
     return 0;
 }
@@ -408,10 +356,46 @@ int zmk_light_group_off(void)
         }
     }
 #endif
+    light_group_enabled = false;
     k_work_submit_to_queue(zmk_workqueue_lowprio_work_q(), &light_group_off_work);
     k_timer_stop(&light_group_tick);
     return 0;
 }
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB) ||                                             \
+    IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_IDLE)
+
+static int light_group_auto_state(bool target_wake_state)
+{
+    if (target_wake_state) {
+        return zmk_light_group_on();
+    } else {
+        return zmk_light_group_off();
+    }
+}
+
+static int handle_light_group_auto_off_events(const zmk_event_t *eh)
+{
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_IDLE)
+    if (as_zmk_activity_state_changed(eh)) {
+        return light_group_auto_state(zmk_activity_get_state() == ZMK_ACTIVITY_ACTIVE);
+    }
+#endif
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB)
+    if (as_zmk_usb_conn_state_changed(eh)) {
+        return light_group_auto_state(zmk_usb_is_powered());
+    }
+#endif
+    return 0;
+}
+
+ZMK_LISTENER(light_group_auto_off, handle_light_group_auto_off_events);
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_IDLE)
+ZMK_SUBSCRIPTION(light_group_auto_off, zmk_activity_state_changed);
+#endif
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB)
+ZMK_SUBSCRIPTION(light_group_auto_off, zmk_usb_conn_state_changed);
+#endif
+#endif
 
 static int zmk_light_group_init(void)
 {
@@ -420,6 +404,7 @@ static int zmk_light_group_init(void)
     memset(state, sizeof(state), 0);
     apply_ledlayout_for_group(LG_ALL);
 
+    light_group_enabled = IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_ON_START);
 #if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB)
     light_group_enabled = zmk_usb_is_powered();
 #endif
