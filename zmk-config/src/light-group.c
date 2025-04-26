@@ -76,10 +76,80 @@ static struct led_rgb pixels[STRIP_NUM_PIXELS];
 
 static struct pixel_state state[STRIP_NUM_PIXELS];
 
+/*
+ * Work loop:
+ *
+ * Put light_group_tick_work onto the lowprio_work queue when the timer
+ * ticks. Defined here, so it can be referenced by both the ext_power routines
+ * (that can disable the timer) and the main init routine at the end of this
+ * file.
+ */
+static void zmk_light_group_tick(struct k_work *work);
+
+K_WORK_DEFINE(light_group_tick_work, zmk_light_group_tick);
+
+static void zmk_light_group_tick_handler(struct k_timer *timer)
+{
+    if (!light_group_enabled) {
+        return;
+    }
+
+    k_work_submit_to_queue(zmk_workqueue_lowprio_work_q(), &light_group_tick_work);
+}
+
+K_TIMER_DEFINE(light_group_tick, zmk_light_group_tick_handler, 0);
+
+/*
+ * Shell commands
+ *
+ * Only the desktop and battery endpoints really make sense. These must be fed
+ * from the machine we are connecting to. The rest of the endpoints are here for
+ * completion and to allow debugging of different groups via serial.
+ */
+static int cmd_battery(const struct shell *sh, size_t argc, char **argv)
+{
+    battery_value = atoi(argv[1]);
+    updated_groups |= (1 << LG_BATTERY);
+
+    return 0;
+}
+
 static int cmd_desktop(const struct shell *sh, size_t argc, char **argv)
 {
     desktop_value = atoi(argv[1]);
     updated_groups |= (1 << LG_DESKTOP);
+
+    return 0;
+}
+
+static int cmd_endpoint(const struct shell *sh, size_t argc, char **argv)
+{
+    endpoint_value = atoi(argv[1]);
+    updated_groups |= (1 << LG_ENDPOINT);
+
+    return 0;
+}
+
+static int cmd_hid(const struct shell *sh, size_t argc, char **argv)
+{
+    hid_value = atoi(argv[1]);
+    updated_groups |= (1 << LG_HID);
+
+    return 0;
+}
+
+static int cmd_layer(const struct shell *sh, size_t argc, char **argv)
+{
+    layer_value = atoi(argv[1]);
+    updated_groups |= (1 << LG_LAYER);
+
+    return 0;
+}
+
+static int cmd_profile(const struct shell *sh, size_t argc, char **argv)
+{
+    profile_value = atoi(argv[1]);
+    updated_groups |= (1 << LG_PROFILE);
 
     return 0;
 }
@@ -92,12 +162,197 @@ static int cmd_volume(const struct shell *sh, size_t argc, char **argv)
     return 0;
 }
 
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_lightgroup,
-                               SHELL_CMD_ARG(desktop, NULL, "Set desktop value", cmd_desktop, 2, 0),
-                               SHELL_CMD_ARG(volume, 0, "Set volume value", cmd_volume, 2, 0),
-                               SHELL_SUBCMD_SET_END);
+SHELL_STATIC_SUBCMD_SET_CREATE(
+    sub_lightgroup, SHELL_CMD_ARG(battery, NULL, "Set battery value", cmd_battery, 2, 0),
+    SHELL_CMD_ARG(desktop, NULL, "Set desktop value", cmd_desktop, 2, 0),
+    SHELL_CMD_ARG(endpoint, NULL, "Set endpoint value", cmd_endpoint, 2, 0),
+    SHELL_CMD_ARG(hid, NULL, "Set hid value", cmd_hid, 2, 0),
+    SHELL_CMD_ARG(layer, NULL, "Set layer value", cmd_layer, 2, 0),
+    SHELL_CMD_ARG(profile, NULL, "Set profile value", cmd_profile, 2, 0),
+    SHELL_CMD_ARG(volume, 0, "Set volume value", cmd_volume, 2, 0), SHELL_SUBCMD_SET_END);
 SHELL_CMD_REGISTER(lightgroup, &sub_lightgroup, "Light group values", NULL);
 
+/*
+ * ZMK Event handlers
+ *
+ * Some of the light groups are showing zmk state, these handlers are listening
+ * for battery / endpoint / layer / hid indicator / ble profile changes.
+ */
+static int handle_battery_change(const zmk_event_t *eh)
+{
+    const struct zmk_battery_state_changed *ev = (const struct zmk_battery_state_changed *)eh;
+    if (ev->state_of_charge != battery_value) {
+        /* Called with the computed state of charge in a percentage */
+        battery_value = ev->state_of_charge;
+        updated_groups |= (1 << LG_BATTERY);
+    }
+    return 0;
+}
+
+ZMK_LISTENER(light_group_battery, handle_battery_change);
+ZMK_SUBSCRIPTION(light_group_battery, zmk_battery_state_changed);
+
+static int handle_endpoint_change(const zmk_event_t *eh)
+{
+    const struct zmk_endpoint_changed_event *ev = (const struct zmk_endpoint_changed_event *)eh;
+    uint8_t new_endpoint = zmk_endpoint_instance_to_index(ev->data.endpoint);
+    if (new_endpoint != endpoint_value) {
+        /* ENDPOINT_USB = 0 and ENDPOINT_BLE = [1..n], depending on current BLE profile */
+        endpoint_value = new_endpoint;
+        updated_groups |= (1 << LG_ENDPOINT);
+    }
+    return 0;
+}
+
+ZMK_LISTENER(light_group_endpoint, handle_endpoint_change);
+ZMK_SUBSCRIPTION(light_group_endpoint, zmk_endpoint_changed);
+
+static int handle_layer_change(const zmk_event_t *eh)
+{
+    const struct zmk_layer_state_changed_event *ev =
+        (const struct zmk_layer_state_changed_event *)eh;
+    if (ev->data.state && ev->data.layer != layer_value) {
+        layer_value = ev->data.layer;
+        updated_groups |= (1 << LG_LAYER);
+    }
+    return 0;
+}
+
+ZMK_LISTENER(light_group_layer, handle_layer_change);
+ZMK_SUBSCRIPTION(light_group_layer, zmk_layer_state_changed);
+
+static int handle_hid_change(const zmk_event_t *eh)
+{
+    const struct zmk_hid_indicators_changed *ev = (const struct zmk_hid_indicators_changed *)eh;
+    if (ev->indicators != hid_value) {
+        /* Indicators is an uint8_t with the HID indicators as per the standard report */
+        hid_value = ev->indicators;
+        updated_groups |= (1 << LG_HID);
+    }
+    return 0;
+}
+
+ZMK_LISTENER(light_group_hid, handle_hid_change);
+ZMK_SUBSCRIPTION(light_group_hid, zmk_hid_indicators_changed);
+
+static int handle_ble_profile_change(const zmk_event_t *eh)
+{
+    uint8_t profile = zmk_ble_active_profile_index();
+    if (profile != profile_value) {
+        /* Index into the ble profile array */
+        profile_value = profile;
+        updated_groups |= (1 << LG_PROFILE);
+    }
+    return 0;
+}
+
+ZMK_LISTENER(light_group_profile, handle_ble_profile_change);
+ZMK_SUBSCRIPTION(light_group_profile, zmk_ble_active_profile_changed);
+
+/*
+ * Many leds = many milli amps of current draw. Make sure we can react to:
+ *
+ * - ext power disabling
+ * - usb connection (yay), and disconnection (boo!)
+ * - the keyboard being idle
+ */
+int zmk_light_group_on(void)
+{
+    if (!led_strip) {
+        return -ENODEV;
+    }
+
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_EXT_POWER)
+    if (ext_power != NULL) {
+        int rc = ext_power_enable(ext_power);
+        if (rc != 0) {
+            LOG_ERR("Unable to enable EXT_POWER: %d", rc);
+        }
+    }
+#endif
+
+    light_group_enabled = true;
+    k_timer_start(&light_group_tick, K_NO_WAIT, K_MSEC(50));
+    return 0;
+}
+
+static void zmk_light_group_off_handler(struct k_work *work)
+{
+    for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
+        pixels[i] = (struct led_rgb){.r = 0, .g = 0, .b = 0};
+    }
+    led_strip_update_rgb(led_strip, pixels, STRIP_NUM_PIXELS);
+}
+
+K_WORK_DEFINE(light_group_off_work, zmk_light_group_off_handler);
+
+int zmk_light_group_off(void)
+{
+    if (!led_strip) {
+        return -ENODEV;
+    }
+
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_EXT_POWER)
+    if (ext_power != NULL) {
+        int rc = ext_power_disable(ext_power);
+        if (rc != 0) {
+            LOG_ERR("Unable to disable EXT_POWER: %d", rc);
+        }
+    }
+#endif
+
+    light_group_enabled = false;
+    k_work_submit_to_queue(zmk_workqueue_lowprio_work_q(), &light_group_off_work);
+    k_timer_stop(&light_group_tick);
+    return 0;
+}
+
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB) ||                                             \
+    IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_IDLE)
+
+static int light_group_auto_state(bool target_wake_state)
+{
+    if (target_wake_state) {
+        return zmk_light_group_on();
+    } else {
+        return zmk_light_group_off();
+    }
+}
+
+static int handle_light_group_auto_off_events(const zmk_event_t *eh)
+{
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_IDLE)
+    if (as_zmk_activity_state_changed(eh)) {
+        return light_group_auto_state(zmk_activity_get_state() == ZMK_ACTIVITY_ACTIVE);
+    }
+#endif
+
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB)
+    if (as_zmk_usb_conn_state_changed(eh)) {
+        return light_group_auto_state(zmk_usb_is_powered());
+    }
+#endif
+    return 0;
+}
+
+ZMK_LISTENER(light_group_auto_off, handle_light_group_auto_off_events);
+
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_IDLE)
+ZMK_SUBSCRIPTION(light_group_auto_off, zmk_activity_state_changed);
+#endif
+
+#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB)
+ZMK_SUBSCRIPTION(light_group_auto_off, zmk_usb_conn_state_changed);
+#endif
+
+#endif
+
+/*
+ * Light range functions;
+ *
+ * Map the last parameter (value, percentage) to a range of HSV values, and
+ * store the result in the provided pixel_state.
+ */
 static void light_group_range_select(struct pixel_state *current, const hsv_t *group,
                                      uint8_t group_max, uint8_t value)
 {
@@ -172,77 +427,6 @@ static void apply_ledlayout_for_group(uint8_t group)
     }
 }
 
-static int handle_battery_change(const zmk_event_t *eh)
-{
-    const struct zmk_battery_state_changed *ev = (const struct zmk_battery_state_changed *)eh;
-    if (ev->state_of_charge != battery_value) {
-        /* Called with the computed state of charge in a percentage */
-        battery_value = ev->state_of_charge;
-        updated_groups |= (1 << LG_BATTERY);
-    }
-    return 0;
-}
-
-ZMK_LISTENER(light_group_battery, handle_battery_change);
-ZMK_SUBSCRIPTION(light_group_battery, zmk_battery_state_changed);
-
-static int handle_endpoint_change(const zmk_event_t *eh)
-{
-    const struct zmk_endpoint_changed_event *ev = (const struct zmk_endpoint_changed_event *)eh;
-    uint8_t new_endpoint = zmk_endpoint_instance_to_index(ev->data.endpoint);
-    if (new_endpoint != endpoint_value) {
-        /* ENDPOINT_USB = 0 and ENDPOINT_BLE = [1..n], depending on current BLE profile */
-        endpoint_value = new_endpoint;
-        updated_groups |= (1 << LG_ENDPOINT);
-    }
-    return 0;
-}
-
-ZMK_LISTENER(light_group_endpoint, handle_endpoint_change);
-ZMK_SUBSCRIPTION(light_group_endpoint, zmk_endpoint_changed);
-
-static int handle_layer_change(const zmk_event_t *eh)
-{
-    const struct zmk_layer_state_changed_event *ev =
-        (const struct zmk_layer_state_changed_event *)eh;
-    if (ev->data.state && ev->data.layer != layer_value) {
-        layer_value = ev->data.layer;
-        updated_groups |= (1 << LG_LAYER);
-    }
-    return 0;
-}
-
-ZMK_LISTENER(light_group_layer, handle_layer_change);
-ZMK_SUBSCRIPTION(light_group_layer, zmk_layer_state_changed);
-
-static int handle_hid_change(const zmk_event_t *eh)
-{
-    const struct zmk_hid_indicators_changed *ev = (const struct zmk_hid_indicators_changed *)eh;
-    if (ev->indicators != hid_value) {
-        /* Indicators is an uint8_t with the HID indicators as per the standard report */
-        hid_value = ev->indicators;
-        updated_groups |= (1 << LG_HID);
-    }
-    return 0;
-}
-
-ZMK_LISTENER(light_group_hid, handle_hid_change);
-ZMK_SUBSCRIPTION(light_group_hid, zmk_hid_indicators_changed);
-
-static int handle_ble_profile_change(const zmk_event_t *eh)
-{
-    uint8_t profile = zmk_ble_active_profile_index();
-    if (profile != profile_value) {
-        /* Index into the ble profile array */
-        profile_value = profile;
-        updated_groups |= (1 << LG_PROFILE);
-    }
-    return 0;
-}
-
-ZMK_LISTENER(light_group_profile, handle_ble_profile_change);
-ZMK_SUBSCRIPTION(light_group_profile, zmk_ble_active_profile_changed);
-
 static void zmk_light_group_tick(struct k_work *work)
 {
     if (updated_groups) {
@@ -301,101 +485,6 @@ static void zmk_light_group_tick(struct k_work *work)
         LOG_ERR("Failed to update RGB strip (%d)", err);
     }
 }
-
-K_WORK_DEFINE(light_group_tick_work, zmk_light_group_tick);
-
-static void zmk_light_group_tick_handler(struct k_timer *timer)
-{
-    if (!light_group_enabled) {
-        return;
-    }
-
-    k_work_submit_to_queue(zmk_workqueue_lowprio_work_q(), &light_group_tick_work);
-}
-
-K_TIMER_DEFINE(light_group_tick, zmk_light_group_tick_handler, 0);
-
-int zmk_light_group_on(void)
-{
-    if (!led_strip) {
-        return -ENODEV;
-    }
-#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_EXT_POWER)
-    if (ext_power != NULL) {
-        int rc = ext_power_enable(ext_power);
-        if (rc != 0) {
-            LOG_ERR("Unable to enable EXT_POWER: %d", rc);
-        }
-    }
-#endif
-    light_group_enabled = true;
-    k_timer_start(&light_group_tick, K_NO_WAIT, K_MSEC(50));
-    return 0;
-}
-
-static void zmk_light_group_off_handler(struct k_work *work)
-{
-    for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-        pixels[i] = (struct led_rgb){.r = 0, .g = 0, .b = 0};
-    }
-    led_strip_update_rgb(led_strip, pixels, STRIP_NUM_PIXELS);
-}
-
-K_WORK_DEFINE(light_group_off_work, zmk_light_group_off_handler);
-
-int zmk_light_group_off(void)
-{
-    if (!led_strip) {
-        return -ENODEV;
-    }
-#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_EXT_POWER)
-    if (ext_power != NULL) {
-        int rc = ext_power_disable(ext_power);
-        if (rc != 0) {
-            LOG_ERR("Unable to disable EXT_POWER: %d", rc);
-        }
-    }
-#endif
-    light_group_enabled = false;
-    k_work_submit_to_queue(zmk_workqueue_lowprio_work_q(), &light_group_off_work);
-    k_timer_stop(&light_group_tick);
-    return 0;
-}
-#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB) ||                                             \
-    IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_IDLE)
-
-static int light_group_auto_state(bool target_wake_state)
-{
-    if (target_wake_state) {
-        return zmk_light_group_on();
-    } else {
-        return zmk_light_group_off();
-    }
-}
-
-static int handle_light_group_auto_off_events(const zmk_event_t *eh)
-{
-#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_IDLE)
-    if (as_zmk_activity_state_changed(eh)) {
-        return light_group_auto_state(zmk_activity_get_state() == ZMK_ACTIVITY_ACTIVE);
-    }
-#endif
-#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB)
-    if (as_zmk_usb_conn_state_changed(eh)) {
-        return light_group_auto_state(zmk_usb_is_powered());
-    }
-#endif
-    return 0;
-}
-
-ZMK_LISTENER(light_group_auto_off, handle_light_group_auto_off_events);
-#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_IDLE)
-ZMK_SUBSCRIPTION(light_group_auto_off, zmk_activity_state_changed);
-#endif
-#if IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_AUTO_OFF_USB)
-ZMK_SUBSCRIPTION(light_group_auto_off, zmk_usb_conn_state_changed);
-#endif
-#endif
 
 static int zmk_light_group_init(void)
 {
