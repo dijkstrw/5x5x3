@@ -13,9 +13,13 @@ config BT_CTLR
 config PINCTRL
     default y
 
+config ZMK_LOW_PRIORITY_WORK_QUEUE
+    default y
+
 config ZMK_LIGHT_GROUP
     bool "Enable light group mode"
     default y
+    depends on ZMK_LOW_PRIORITY_WORK_QUEUE
 
 if ZMK_LIGHT_GROUP
 

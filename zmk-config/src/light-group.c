@@ -178,6 +178,7 @@ SHELL_CMD_REGISTER(lightgroup, &sub_lightgroup, "Light group values", NULL);
  * Some of the light groups are showing zmk state, these handlers are listening
  * for battery / endpoint / layer / hid indicator / ble profile changes.
  */
+#if IS_ENABLED(CONFIG_ZMK_BLE)
 static int handle_battery_change(const zmk_event_t *eh)
 {
     const struct zmk_battery_state_changed *ev = (const struct zmk_battery_state_changed *)eh;
@@ -191,6 +192,7 @@ static int handle_battery_change(const zmk_event_t *eh)
 
 ZMK_LISTENER(light_group_battery, handle_battery_change);
 ZMK_SUBSCRIPTION(light_group_battery, zmk_battery_state_changed);
+#endif
 
 static int handle_endpoint_change(const zmk_event_t *eh)
 {
@@ -235,6 +237,7 @@ static int handle_hid_change(const zmk_event_t *eh)
 ZMK_LISTENER(light_group_hid, handle_hid_change);
 ZMK_SUBSCRIPTION(light_group_hid, zmk_hid_indicators_changed);
 
+#if IS_ENABLED(CONFIG_ZMK_BLE)
 static int handle_ble_profile_change(const zmk_event_t *eh)
 {
     uint8_t profile = zmk_ble_active_profile_index();
@@ -248,6 +251,7 @@ static int handle_ble_profile_change(const zmk_event_t *eh)
 
 ZMK_LISTENER(light_group_profile, handle_ble_profile_change);
 ZMK_SUBSCRIPTION(light_group_profile, zmk_ble_active_profile_changed);
+#endif
 
 /*
  * Many leds = many milli amps of current draw. Make sure we can react to:
