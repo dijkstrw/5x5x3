@@ -99,6 +99,19 @@ static void zmk_light_group_tick_handler(struct k_timer *timer)
 
 K_TIMER_DEFINE(light_group_tick, zmk_light_group_tick_handler, 0);
 
+static uint8_t percentage_to_fract8_t(uint8_t percentage)
+{
+    fract8_t result;
+
+    if (percentage > 100) {
+        percentage = 100;
+    }
+
+    result = ((uint16_t)(percentage * UINT8_MAX) / 100);
+
+    return result;
+}
+
 /*
  * Shell commands
  *
@@ -108,7 +121,7 @@ K_TIMER_DEFINE(light_group_tick, zmk_light_group_tick_handler, 0);
  */
 static int cmd_battery(const struct shell *sh, size_t argc, char **argv)
 {
-    battery_value = atoi(argv[1]);
+    battery_value = percentage_to_fract8_t(atoi(argv[1]));
     updated_groups |= (1 << LG_BATTERY);
 
     return 0;
@@ -183,8 +196,8 @@ static int handle_battery_change(const zmk_event_t *eh)
 {
     const struct zmk_battery_state_changed *ev = (const struct zmk_battery_state_changed *)eh;
     if (ev->state_of_charge != battery_value) {
-        /* Called with the computed state of charge in a percentage */
-        battery_value = ev->state_of_charge;
+        /* Called with the computed state of charge in a percentage 0-100 */
+        battery_value = percentage_to_fract8_t(ev->state_of_charge);
         updated_groups |= (1 << LG_BATTERY);
     }
     return 0;
