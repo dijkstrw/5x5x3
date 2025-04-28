@@ -364,6 +364,19 @@ static void light_group_range_select(struct pixel_state *current, const hsv_t *g
     pixel_effect_init_hold(current, group[value]);
 }
 
+/*
+ * light_group_continuous
+ *
+ * Determine the color to set given a range of colors and a percentage that maps
+ * somewhere in that range of colors.
+ *
+ * Say the percentage maps somewhere between 2 colors, we then want to mix those
+ * colors accordingly.
+ *
+ * To do this we need to determine:
+ * - start_index = what is the color from which we start mixing
+ * - bucket_size = what amount of percentage points fall between two colors
+ */
 static void light_group_continuous(struct pixel_state *current, const hsv_t *group,
                                    uint8_t group_max, fract8_t percentage)
 {
@@ -373,7 +386,8 @@ static void light_group_continuous(struct pixel_state *current, const hsv_t *gro
     hsv_t target;
 
     if (start_index == (group_max - 1)) {
-        pixel_effect_init_hold(current, group[start_index + 1]);
+        /* Corner case when percentage = 100% */
+        pixel_effect_init_hold(current, group[start_index]);
     } else {
         hsv_transition(group[start_index], group[start_index + 1], mix, &target);
         pixel_effect_init_hold(current, target);

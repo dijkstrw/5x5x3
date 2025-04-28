@@ -45,7 +45,8 @@
            colors = < &hsv HSV_AMBER >;
        };
        batterys {
-           colors = < &hsv HSV_WHITE        &hsv HSV_RED >;
+           colors = < &hsv HSV_MAGENTA      &hsv HSV_RED     &hsv HSV_YELLOW  &hsv HSV_GREEN    &hsv HSV_GREEN >;
+           /*              0%--------------------25%--------------50%--------------75%---------------100%      */
        };
        desktops {
            colors =  < &hsv HSV_CHARTREUSE   &hsv HSV_YELLOW   &hsv HSV_ROSE   &hsv HSV_VIOLET   &hsv HSV_AZURE
@@ -65,6 +66,7 @@
        };
        volumes {
            colors =  < &hsv HSV_YELLOW       &hsv HSV_RED >;
+           /*               0%--------------------100%    */
        };
    };
 };
