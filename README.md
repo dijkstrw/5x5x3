@@ -7,7 +7,7 @@ To start run:
  west init -l zmk/app
  cd zmk/app/
  west update
- pip install -r ../zephyr/scripts/requirements-base.txt 
+ pip install -r ../zephyr/scripts/requirements-base.txt
 
 Inside a zmk/app directory, run
 
