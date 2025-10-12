@@ -585,7 +585,7 @@
       "gencad": "",
       "idf": "",
       "netlist": "5x5x2.net",
-      "plot": "",
+      "plot": "gerbers/key board/",
       "pos_files": "",
       "specctra_dsn": "",
       "step": "",
