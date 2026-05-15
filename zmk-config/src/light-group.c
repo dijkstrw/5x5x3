@@ -520,8 +520,8 @@ static void zmk_light_group_tick(struct k_work *work)
 static int zmk_light_group_init(void)
 {
     led_strip = DEVICE_DT_GET(STRIP_CHOSEN);
-    memset(pixels, sizeof(pixels), 0);
-    memset(state, sizeof(state), 0);
+    memset(pixels, 0, sizeof(pixels));
+    memset(state, 0, sizeof(state));
     apply_ledlayout_for_group(LG_ALL);
 
     light_group_enabled = IS_ENABLED(CONFIG_ZMK_LIGHT_GROUP_ON_START);
