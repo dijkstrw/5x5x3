@@ -1,0 +1,2 @@
+config BOARD_5X5X3
+    select SOC_NRF52840_QIAA

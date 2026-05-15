@@ -1,0 +1,5 @@
+board:
+  name: 5x5x3
+  vendor: dijkstra
+  socs:
+    - name: nrf52840
