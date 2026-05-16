@@ -19,6 +19,7 @@
                      &kp K_APP       &kp C_AL_DOCS   &kp C_AL_LOCK   &kp C_AL_FILES  &kp C_AL_WWW
                      &kp N1          &kp N2          &kp F22         &kp F23         &kp F24
             >;
+            sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
         };
     };
     ledlayout {
