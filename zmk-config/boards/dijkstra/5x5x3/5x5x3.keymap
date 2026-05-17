@@ -17,7 +17,17 @@
                      &kp F17         &kp F18         &kp F19         &kp F20         &kp F21
                      &kp RC(LEFT)    &kp LEFT        &kp K_PP        &kp RIGHT       &kp RC(RIGHT)
                      &kp K_APP       &kp C_AL_DOCS   &kp C_AL_LOCK   &kp C_AL_FILES  &kp C_AL_WWW
-                     &out OUT_TOG    &bt BT_NXT      &kp F22         &kp F23         &kp F24
+                     &tog 1          &bt BT_NXT      &kp F22         &kp F23         &kp F24
+            >;
+            sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
+        };
+        bluetooth_layer {
+            bindings = <
+                     &kp N1          &kp N2          &kp N3          &kp N4          &kp N0
+                     &kp N5          &kp N6          &kp N7          &kp N9          &kp N9
+                     &kp ENTER       &kp ENTER       &kp ENTER       &kp ENTER       &kp ENTER
+                     &bt BT_SEL 0    &bt BT_SEL 1    &bt BT_SEL 2    &bt BT_SEL 3    &bt BT_SEL 4
+                     &tog 1          &bt BT_NXT      &out OUT_TOG    &bt BT_CLR      &bt BT_CLR
             >;
             sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>;
         };
@@ -38,6 +48,13 @@
                          LG_VOLUME   LG_VOLUME   LG_VOLUME   LG_VOLUME   LG_VOLUME
                          LG_HID      LG_HID      LG_HID      LG_BATTERY  LG_BATTERY
                          LG_ENDPOINT LG_PROFILE  LG_LAYER    LG_LAYER    LG_LAYER     ];
+        };
+        bluetooth_layer {
+            bindings = [ LG_LAYER    LG_LAYER    LG_LAYER    LG_LAYER    LG_LAYER
+                         LG_LAYER    LG_LAYER    LG_LAYER    LG_LAYER    LG_LAYER
+                         LG_LAYER    LG_LAYER    LG_LAYER    LG_LAYER    LG_LAYER
+                         LG_PROFILE  LG_PROFILE  LG_PROFILE  LG_PROFILE  LG_PROFILE
+                         LG_LAYER    LG_PROFILE  LG_PROFILE  LG_PROFILE  LG_PROFILE   ];
         };
    };
    colorgroup {

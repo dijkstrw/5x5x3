@@ -224,11 +224,13 @@ ZMK_SUBSCRIPTION(light_group_endpoint, zmk_endpoint_changed);
 
 static int handle_layer_change(const zmk_event_t *eh)
 {
-    const struct zmk_layer_state_changed_event *ev =
-        (const struct zmk_layer_state_changed_event *)eh;
-    if (ev->data.state && ev->data.layer != layer_value) {
-        layer_value = ev->data.layer;
-        updated_groups |= (1 << LG_LAYER);
+    ARG_UNUSED(eh);
+    zmk_keymap_layer_index_t new_layer = zmk_keymap_highest_layer_active();
+    if (new_layer != layer_value) {
+        layer_value = new_layer;
+        /* A layer change can reassign every LED to a different group, so
+         * mark all groups dirty to force a full redraw. */
+        updated_groups = LG_ALL;
     }
     return 0;
 }
