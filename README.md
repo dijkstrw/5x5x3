@@ -116,38 +116,52 @@ assigned to that group on the active layer fade to it.
 Building
 --------
 
+5x5x3 assumes you have `direnv` and that `.envrc` is automatically
+sourced. This will setup a local `.venv` and install `west` using
+`uv`.
+
+After that you need `zmk` for keyboard source firmware files, `zephyr`
+for the rtos source, which includes an usb and bt stack, and the NRF52
+hal, and finally an SDK for cross-compiling to NRF52.
+
  make init
 
-First-time setup;
-- clones zmk
-- runs `west init`
-- fetches zephyr + modules
-- pip installs zephyr python modules
+Retrieves the `zmk` and `zephyr` source, and installs all python
+modules we need for building.
+
+If you have not developed with `zephyr` before you also need a Zephyr
+SDK. Go to the `zmk` directory and run `west sdk install`.
+
+Note that your source directory will balloon to between 1.5 and almost
+5GB due to all the downloaded dependencies.
+
+With all deps loaded;
 
  make build
 
-Lean production build;
+Will build a lean production firmware that contains;
 - BLE
 - USB
 - kscan in interrupt mode
-- shell just containing the lightgroup command
+- shell with just the lightgroup command
 
  make debug
 
-Debug build;
-- logging
+Will build a debug firmwire with:
+- more logging
 - kernel/gpio/bt/settings shells
 - RTT over the SWD probe
 - polling kscan
 
  make flash
 
-Flash the resulting firmware to the board via Black Magic Probe at
-`blackmagic.lan:2022`.
+Will attempt to flash the resulting firmware to the board via a Black
+Magic Probe at `blackmagic.lan:2022`.
 
  make serial
 
-Open a terminal to the keyboard's USB CDC ACM.
+Will open a terminal to the keyboard's USB CDC ACM, after it has
+attached e.g. via USB.
 
 Debugging
 ---------

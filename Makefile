@@ -16,7 +16,7 @@ init:
 	git submodule update --init --recursive zmk
 	-cd $(ZMK_DIR) && $(WEST) init -l app
 	cd $(ZMK_DIR) && $(WEST) update
-	$(PIP) install -r zephyr/scripts/requirements-base.txt
+	$(PIP) install -r $(ZMK_DIR)/zephyr/scripts/requirements-base.txt
 
 build:
 	cd $(APP_DIR) && $(WEST) build --pristine -b $(BOARD) -- \
