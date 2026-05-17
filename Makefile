@@ -10,7 +10,7 @@ GDB   := /usr/bin/arm-none-eabi-gdb
 PIP   := uv pip
 WEST  := west
 
-.PHONY: init build debug flash serial
+.PHONY: init build debug flash serial clean
 
 init:
 	git submodule update --init --recursive zmk
@@ -45,3 +45,8 @@ serial:
 	fi; \
 	echo "Connecting to /dev/serial/by-id/$$dev"; \
 	tio "/dev/serial/by-id/$$dev"
+
+clean:
+	-cd $(ZMK_DIR) && git clean -fdx
+	-git submodule deinit --all -f
+	-rm -rf $(ZMK_CONFIG)/.west
