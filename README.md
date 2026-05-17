@@ -1,29 +1,41 @@
-Building
---------
+5x5x3
+-----
 
-To start run:
+First-time setup;
+- clones zmk
+- runs `west init`
+- fetches zephyr + modules
+- pip installs zephyr python modules
 
- git submodule update --recursive --remote
- west init -l zmk/app
- cd zmk/app/
- west update
- pip install -r ../zephyr/scripts/requirements-base.txt
+ make init
 
-Inside a zmk/app directory, run
+Lean production build;
+- BLE
+- USB
+- kscan in interrupt mode
+- no shell
 
- west build --pristine -b 5x5x3 -- -DZMK_EXTRA_MODULES=`pwd`/../../zmk-config -DCONFIG_COMPILER_SAVE_TEMPS=y
+ make build
 
-For a debug build that includes the shell, logging, and ability to inspect zephyr kernel, gpio, bt, and cli over rtt:
+Debug build;
+- logging
+- kernel/gpio/bt/settings shells
+- RTT over the SWD probe
+- polling kscan
 
- west build --pristine -b 5x5x3 -S debug -- -DZMK_EXTRA_MODULES=/home/dijkstra/project/5x5x3/zmk-config -DSNIPPET_ROOT=/home/dijkstra/project/5x5x3/zmk-config
+ make debug
 
-Serial
-------
+Flash the resulting firmware to the board via Black Magic Probe at
+`blackmagic.lan:2022`:
 
-Start talking to keyboard:
+ make flash
 
- tio /dev/ttyACM1
+Open a terminal to the keyboard's USB CDC ACM:
 
+ make serial
+
+Debugging
+---------
 Enable debug logging for zmk:
 
  log enable dbg zmk
@@ -32,4 +44,3 @@ Look at zephyr kernel threads and the amount of stack use of each:
 
  kernel thread list
  kernel thread stacks
-
