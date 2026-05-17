@@ -173,3 +173,16 @@ Look at zephyr kernel threads and the amount of stack use of each:
 
  kernel thread list
  kernel thread stacks
+
+Links
+-----
+
+- [ZMK](https://github.com/zmkfirmware/zmk) — wireless keyboard firmware
+- [Zephyr](https://github.com/zephyrproject-rtos/zephyr) — RTOS that ZMK is
+  built on
+- [Black Magic Probe](https://github.com/blackmagic-debug/blackmagic) — open
+  source SWD/JTAG debug probe firmware used for flashing and RTT
+- [uv](https://github.com/astral-sh/uv) — fast Python package manager used in
+  `make init` to install Zephyr's Python deps
+- [direnv](https://github.com/direnv/direnv) — per-directory shell env, used
+  here to activate the toolchain / Python venv on `cd`
