@@ -97,8 +97,6 @@ endpoint / BLE profile / active layer:
 battery has five colors representing the 0/25/50/75/100% buckets, desktops
 have ten colors for ten desktops, endpoints have three (USB + two BLE):
 
-![Color palette](images/colors.png)
-
     colorgroup {
         compatible = "zmk,color-group";
         batterys  { colors = <&hsv HSV_MAGENTA &hsv HSV_RED &hsv HSV_YELLOW &hsv HSV_GREEN &hsv HSV_GREEN>; };
@@ -107,6 +105,8 @@ have ten colors for ten desktops, endpoints have three (USB + two BLE):
         endpoints { colors = <&hsv HSV_RED &hsv HSV_GREEN &hsv HSV_BLUE>; };
         ...
     };
+
+![Color palette](images/colors.png)
 
 Together: ZMK events (layer change, BLE profile change, battery level,
 HID caps/num indicator, serial cli update) update each group's value,
@@ -124,7 +124,9 @@ After that you need `zmk` for keyboard source firmware files, `zephyr`
 for the rtos source, which includes an usb and bt stack, and the NRF52
 hal, and finally an SDK for cross-compiling to NRF52.
 
- make init
+``` shell
+make init
+```
 
 Retrieves the `zmk` and `zephyr` source, and installs all python
 modules we need for building.
@@ -137,15 +139,19 @@ Note that your source directory will balloon to between 1.5 and almost
 
 With all deps loaded;
 
- make build
+``` shell
+make build
+```
 
 Will build a lean production firmware that contains;
 - BLE
 - USB
 - kscan in interrupt mode
-- shell with just the lightgroup command
+- shell with just the lightgroup command.
 
- make debug
+``` shell
+make debug
+```
 
 Will build a debug firmwire with:
 - more logging
@@ -153,12 +159,16 @@ Will build a debug firmwire with:
 - RTT over the SWD probe
 - polling kscan
 
- make flash
+``` shell
+make flash
+```
 
 Will attempt to flash the resulting firmware to the board via a Black
 Magic Probe at `blackmagic.lan:2022`.
 
- make serial
+``` shell
+make serial
+```
 
 Will open a terminal to the keyboard's USB CDC ACM, after it has
 attached e.g. via USB.
@@ -167,22 +177,18 @@ Debugging
 ---------
 Enable debug logging for zmk:
 
- log enable dbg zmk
+    log enable dbg zmk
 
 Look at zephyr kernel threads and the amount of stack use of each:
 
- kernel thread list
- kernel thread stacks
+    kernel thread list
+    kernel thread stacks
 
 Links
 -----
 
-- [ZMK](https://github.com/zmkfirmware/zmk) — wireless keyboard firmware
-- [Zephyr](https://github.com/zephyrproject-rtos/zephyr) — RTOS that ZMK is
+- [ZMK](https://github.com/zmkfirmware/zmk): wireless keyboard firmware
+- [Zephyr](https://github.com/zephyrproject-rtos/zephyr): RTOS that ZMK is
   built on
-- [Black Magic Probe](https://github.com/blackmagic-debug/blackmagic) — open
+- [Black Magic Probe](https://github.com/blackmagic-debug/blackmagic): open
   source SWD/JTAG debug probe firmware used for flashing and RTT
-- [uv](https://github.com/astral-sh/uv) — fast Python package manager used in
-  `make init` to install Zephyr's Python deps
-- [direnv](https://github.com/direnv/direnv) — per-directory shell env, used
-  here to activate the toolchain / Python venv on `cd`
